@@ -1,0 +1,26 @@
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE project files
+.idea/
+.vscode/
+
+# Checkpoints and large logs
+checkpoints/
+wandb/
+runs/
+
+# Temporary or system files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+*.log
+
+# Data cache
+*.tmp
+*.bak
