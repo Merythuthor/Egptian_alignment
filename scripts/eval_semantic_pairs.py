@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# File: lrec_eval_bert_all_3.0.py (v3.0, safe, no file-reading changes)
-# Description: Final evaluation script for bert_all, based on your original logic.
-# Minimal changes: word-boundary regex, symmetric sampling, v2 caches/plots/csv, safety checks.
 
 import os
 import json
@@ -24,106 +18,169 @@ from sklearn.metrics import roc_auc_score
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-# 高质量导出（文字矢量、不糊）
+
+
+
+
 mpl.rcParams['savefig.dpi'] = 600
 mpl.rcParams['figure.dpi'] = 300
-mpl.rcParams['pdf.fonttype'] = 42      # TrueType，避免文字被转曲
-mpl.rcParams['ps.fonttype']  = 42
-mpl.rcParams['svg.fonttype'] = 'none'  # SVG/ PDF 中保留文本
-
-
-# --- 导入我们的新模型定义（按你的工程路径） ---
-sys.path.append(str(Path(".").resolve()))
-from models.multi_task_bert_encoder_decoder import MultiTaskBertEncoderDecoder, MultiTaskBertConfig
-
-# —— 与论文一致：无衬线（TeX Gyre Heros / Helvetica 系）——
-mpl.rcParams['font.family'] = 'sans-serif'
-mpl.rcParams['font.sans-serif'] = ['TeX Gyre Heros', 'Helvetica', 'Arial', 'DejaVu Sans']
-mpl.rcParams['axes.unicode_minus'] = False  # 负号不乱码
-
-# —— 导出更清晰（矢量文字）——
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['ps.fonttype']  = 42
 mpl.rcParams['svg.fonttype'] = 'none'
 
-# =================================================================
-#               ⭐⭐⭐ 核心配置区 START ⭐⭐⭐
-# =================================================================
+
+
+sys.path.append(str(Path(".").resolve()))
+from models.multi_task_bert_encoder_decoder import MultiTaskBertEncoderDecoder, MultiTaskBertConfig
+
+
+mpl.rcParams['font.family'] = 'sans-serif'
+mpl.rcParams['font.sans-serif'] = ['TeX Gyre Heros', 'Helvetica', 'Arial', 'DejaVu Sans']
+mpl.rcParams['axes.unicode_minus'] = False
+
+
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype']  = 42
+mpl.rcParams['svg.fonttype'] = 'none'
+
+
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+
+def as_str(p):
+    return str(p)
+
 
 MODELS_TO_EVALUATE = {
     "BertAll_Exp1_Baseline (ep10)": {
-        "path_template": "checkpoints/bert_all_exp3_baseline_new/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp3_baseline_new"
+            / "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
+
     "BertAll_Exp_MLM_TLM (ep10)": {
-        "path_template": "checkpoints/bert_all_exp2_MLM_TLM/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp2_MLM_TLM"
+            / "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
+
     "BertAll_Exp_MLM_Translation (ep10)": {
-        "path_template": "checkpoints/bert_all_exp2_MLM_Translation/multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp2_MLM_Translation"
+            / "multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
+
     "BertAll_Exp_MLM_TLM_Translation (ep10)": {
-        "path_template": "checkpoints/bert_all_exp2_MLM_TLM_Translation/multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp2_MLM_TLM_Translation"
+            / "multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
+
     "BertAll_Exp1_MLM_TLM_Translation_POS (ep10)": {
-        "path_template": "checkpoints/bert_all_exp2_balanced_new/multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp2_balanced_new"
+            / "multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
 
     "BertAll_Exp_MLM_Fusion_Alpha_Latin_new (ep10)": {
-        "path_template": "checkpoints/bert_all_exp_MLM_fusion_alpha_latin_new_2/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp_MLM_fusion_alpha_latin_new_2"
+            / "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
+
     "BertAll_Exp_MLM_KL_Latin_latest (ep10)": {
-        "path_template": "checkpoints/bert_all_exp3_MLM_KL_Latin_latest/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp3_MLM_KL_Latin_latest"
+            / "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
 
     "BertAll_Exp_MLM_Fusion_Alpha_IPA (ep10)": {
-        "path_template": "checkpoints/bert_all_exp_MLM_fusion_alpha_IPA/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp_MLM_fusion_alpha_IPA"
+            / "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
+
     "BertAll_Exp_MLM_KL_IPA (ep10)": {
-        "path_template": "checkpoints/bert_all_exp_MLM_KL_ipa/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
-        "checkpoints": [55500],  # 示例步数，请修改为你实际训练结束的步数
-        "type": "bert_all"
+        "path_template": str(
+            BASE_DIR
+            / "checkpoints"
+            / "bert_all_exp_MLM_KL_ipa"
+            / "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16"
+            / "checkpoint-{}"
+        ),
+        "checkpoints": [55500],
+        "type": "bert_all",
     },
 }
 
-# Tokenizer 路径（保持你的写法）
-TOKENIZER_PATH = "project_tokenizers/bert_all/tokenizer.json"
 
-# 语料与同源对（保持你的读取方式）
-COGNATE_PAIRS_PATH = "resource_eval_new/egyptian_cognate_pairs_without_repetition.jsonl"
-CORPUS_DIR = "data/processed_jsonl_UPOS"  # 使用你的 *_rev.jsonl 逻辑
+TOKENIZER_PATH = BASE_DIR / "project_tokenizers" / "bert_all" / "tokenizer.json"
+COGNATE_PAIRS_PATH = BASE_DIR / "resource_eval" / "egyptian_cognate_pairs.jsonl"
+CORPUS_DIR = BASE_DIR / "data" / "processed_jsonl_UPOS"
 
-# 结果与缓存（v2 名称，避免覆盖）
-RESULTS_CSV_PATH = "results/bert_all_evaluation_final_v3.csv"
-CACHE_DIR = "evaluation_cache_bert_all_v_without_repetition"
+RESULTS_CSV_PATH = BASE_DIR / "results" / "bert_all_evaluation_final_v3.csv"
+CACHE_DIR = BASE_DIR / "evaluation_cache_bert_all_v_without_repetition"
 
 TOTAL_EVAL_SAMPLES = 20000
 CACHE_BUILD_BATCH_SIZE = 32
 MAX_SEQ_LEN = 768
 
-# =================================================================
-#               ⭐⭐⭐ 核心配置区 END ⭐⭐⭐
-# =================================================================
+
 
 LANGUAGES = ["hieroglyphic", "demotic", "sahidic", "bohairic"]
 EGYPTIAN_FAMILY = {"hieroglyphic", "demotic"}
 COPTIC_FAMILY = {"sahidic", "bohairic"}
 
-# 导入语言标签，如果失败则使用硬编码（保持你的逻辑）
+
 try:
     from aaai.training.utils import TAG_BY_LANG
 except ImportError:
@@ -133,7 +190,6 @@ LANG_TAGS = TAG_BY_LANG.copy()
 LANG_TAGS["english"] = "<eng>"
 
 
-# ---------------------------- 工具函数（不改你的数据读取） ----------------------------
 def set_seed(seed: int = 42):
     random.seed(seed)
     np.random.seed(seed)
@@ -151,11 +207,11 @@ def hardcoded_preprocess_text(text: str) -> str:
     return text.strip()
 
 
-# ---------------------------- 上下文池（保持你的 *_rev.jsonl 逻辑） ----------------------------
+
 def build_context_pool(corpus_dir):
     print("Building context pool from probing corpus (validation and test sets).")
     context_pool = defaultdict(list)
-    cache_path = Path(CACHE_DIR) / "context_pool_v2.pt"   # <- v2 避免覆盖
+    cache_path = Path(CACHE_DIR) / "context_pool_v2.pt"
     if cache_path.exists():
         print(f"   - Loading context pool from cache: {cache_path}")
         return torch.load(cache_path, weights_only=False)
@@ -186,7 +242,7 @@ def build_context_pool(corpus_dir):
     return context_pool
 
 
-# ---------------------------- E–E 评测分组（保持你的规则） ----------------------------
+
 def get_pair_group(lang1, lang2):
     if (lang1 in EGYPTIAN_FAMILY and lang2 in COPTIC_FAMILY) or \
        (lang1 in COPTIC_FAMILY and lang2 in EGYPTIAN_FAMILY):
@@ -211,7 +267,7 @@ def load_and_stratify_pairs(cognate_path):
     return stratified_pairs
 
 
-# ---------------------------- E–EN 评测辅助（保持你的读取/切分方式） ----------------------------
+
 def _iter_split_lines(corpus_dir, split="train"):
     lang2lines = {}
     for lang in LANGUAGES:
@@ -229,7 +285,7 @@ def _iter_split_lines(corpus_dir, split="train"):
 def build_seen_set_egyptian_english(corpus_dir, cache_dir):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    seen_cache = cache_dir / "seen_pairs_train_E2EN_v2.json"  # <- v2 避免覆盖
+    seen_cache = cache_dir / "seen_pairs_train_E2EN_v2.json"
     if seen_cache.exists():
         with open(seen_cache, "r", encoding="utf-8") as f:
             pairs = json.load(f)
@@ -255,7 +311,7 @@ def build_seen_set_egyptian_english(corpus_dir, cache_dir):
 def build_e2en_eval_pairs(corpus_dir, cache_dir):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    pairs_cache = cache_dir / "e2en_eval_pairs_valtest_v2.json"  # <- v2 避免覆盖
+    pairs_cache = cache_dir / "e2en_eval_pairs_valtest_v2.json"
     if pairs_cache.exists():
         with open(pairs_cache, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -300,7 +356,7 @@ def build_e2en_eval_pairs(corpus_dir, cache_dir):
     return result, seen_set
 
 
-# ---------------------------- 批量向量池缓存（只改正则与缓存名） ----------------------------
+
 @torch.no_grad()
 def build_vector_pool_cache_batched(model, tokenizer, device, context_pool, words_to_cache):
     vector_pool = defaultdict(list)
@@ -344,7 +400,7 @@ def build_vector_pool_cache_batched(model, tokenizer, device, context_pool, word
                     sent_hidden = last_hidden_states[j]
 
                     try:
-                        # ★ 修改：加入词边界，避免子串误命中
+
                         for match in re.finditer(r"\b{}\b".format(re.escape(word)), raw_text):
                             char_start, char_end = match.span()
                             adj_start, adj_end = char_start + tag_char_len, char_end + tag_char_len
@@ -369,7 +425,7 @@ def build_vector_pool_cache_batched(model, tokenizer, device, context_pool, word
     return final_pool
 
 
-# ---------------------------- 评测逻辑（只改为对称采样） ----------------------------
+
 def evaluate_with_instance_sampling(true_pairs, false_pairs, vector_pool):
     def generate_scores(pair_list):
         scores, valid_count = [], 0
@@ -381,7 +437,7 @@ def evaluate_with_instance_sampling(true_pairs, false_pairs, vector_pool):
                 scores.append(F.cosine_similarity(v1, v2, dim=0).item())
         return scores, valid_count
 
-    # ★ 对称随机采样（仍保留上限）
+
     n = min(TOTAL_EVAL_SAMPLES, len(true_pairs), len(false_pairs))
     if n <= 0:
         return {"AUC-ROC": 0.5, "Triplet Accuracy": 0.5, "Valid Pairs": 0}
@@ -409,26 +465,23 @@ def evaluate_with_instance_sampling(true_pairs, false_pairs, vector_pool):
     return {"AUC-ROC": float(auc_roc), "Triplet Accuracy": float(triplet_accuracy), "Valid Pairs": int(valid_pairs)}
 
 
-# =================================================================
-#                               主流程
-# =================================================================
 def main():
     set_seed(42)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}\n")
 
-    # 1) Tokenizer（保持你的加载方式）
     print(f"Loading tokenizer from: {TOKENIZER_PATH}")
-    tokenizer = PreTrainedTokenizerFast(tokenizer_file=TOKENIZER_PATH)
+    if not TOKENIZER_PATH.exists():
+        raise FileNotFoundError(f"Tokenizer file not found: {TOKENIZER_PATH}")
+    tokenizer = PreTrainedTokenizerFast(tokenizer_file=as_str(TOKENIZER_PATH))  # 关键：str()
     tokenizer.pad_token, tokenizer.cls_token, tokenizer.sep_token = "[PAD]", "[CLS]", "[SEP]"
     vocab_size = len(tokenizer)
 
-    # 2) 数据（保持你的读取逻辑）
+
     context_pool = build_context_pool(CORPUS_DIR)
     stratified_true_ee = load_and_stratify_pairs(COGNATE_PAIRS_PATH)
     e2en_pairs_by_lang, _ = build_e2en_eval_pairs(CORPUS_DIR, CACHE_DIR)
 
-    # 3) 为 E-E 构造负例（保持你的旧逻辑）
     stratified_false_ee = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for group, forms in stratified_true_ee.items():
         for form, lang_pairs in forms.items():
@@ -443,7 +496,7 @@ def main():
                             {"word1": p['word1'], "lang1": p['lang1'], "word2": neg_w2, "lang2": p['lang2']}
                         )
 
-    # 4) 收集需要缓存的词（保持逻辑）
+
     all_words_needed = set()
     for groups in (stratified_true_ee, stratified_false_ee):
         for g in groups.values():
@@ -459,7 +512,7 @@ def main():
                 all_words_needed.add((p['word2'], p['lang2']))
     print(f"\nFound {len(all_words_needed)} unique (word, lang) keys required for evaluation.")
 
-    # 5) 输出 CSV（v2）
+
     Path(RESULTS_CSV_PATH).parent.mkdir(parents=True, exist_ok=True)
     csv_file = open(RESULTS_CSV_PATH, 'w', newline='', encoding='utf-8')
     csv_writer = csv.writer(csv_file)
@@ -468,17 +521,18 @@ def main():
         "language_pair", "auc_roc", "triplet_accuracy", "valid_pairs"
     ])
 
-    # 6) 遍历模型评测
     for model_name, config in MODELS_TO_EVALUATE.items():
         for checkpoint in config["checkpoints"]:
-            ckpt_path = Path(config["path_template"].format(checkpoint))
-            if not (ckpt_path / "pytorch_model.bin").exists():
-                print(f"[Skip] Checkpoint not found: {ckpt_path / 'pytorch_model.bin'}")
+            ckpt_dir = Path(config["path_template"].format(checkpoint))
+            ckpt_bin = ckpt_dir / "pytorch_model.bin"
+            if not ckpt_bin.exists():
+                print(f"[Skip] Checkpoint not found: {ckpt_bin}")
                 continue
+            state_dict = torch.load(ckpt_bin, map_location="cpu")
 
             print(f"\n{'=' * 80}\n--- Evaluating Model: {model_name} | Checkpoint: {checkpoint} ---")
 
-            # 模型（保持你的构造方式 + 安全检查）
+
             model_config = MultiTaskBertConfig(vocab_size=vocab_size, max_position_embeddings=MAX_SEQ_LEN)
             model = MultiTaskBertEncoderDecoder(model_config)
             state_dict = torch.load(ckpt_path / "pytorch_model.bin", map_location="cpu")
@@ -496,7 +550,7 @@ def main():
 
             model.to(device)
 
-            # 向量池缓存（v2 文件名，避免覆盖）
+
             sane_model_name = model_name.replace(' ', '_').replace(':', '')
             sig = f"{'-'.join(sorted(LANGUAGES))}_{Path(CORPUS_DIR).name}"
             cache_file = Path(CACHE_DIR) / f"{sane_model_name}_{checkpoint}_{sig}_vecs_v2.pt"
@@ -515,7 +569,7 @@ def main():
             del model
             torch.cuda.empty_cache()
 
-            # ---- E-E 评估
+
             print("\n--- Running E-E Evaluation ---")
             for eval_group, form_types in sorted(stratified_true_ee.items()):
                 for form_type, lang_pairs in sorted(form_types.items()):
@@ -534,7 +588,7 @@ def main():
                         ])
                         csv_file.flush()
 
-            # ---- E-EN 评估
+
             print("\n--- Running E-EN Evaluation ---")
             for lang in LANGUAGES:
                 if lang not in e2en_pairs_by_lang:
@@ -560,20 +614,12 @@ def main():
     csv_file.close()
     print(f"\n✅ All evaluation results have been saved to {RESULTS_CSV_PATH}")
 
-    # 绘图（折线图版本）
+
     _plot_results(RESULTS_CSV_PATH)
 
 
 def _plot_results(csv_path: str, out_dir: str = "results"):
-    """
-    并排两面板热力图（左保留 y 轴，右隐藏 y 轴；正方格）。
-    - 颜色映射：AUC
-    - 单元格文字：显示 "AUC" 和 "(Acc)" 两行
-    - 行内按 AUC 的最大值：数字加粗 + 同色白底高亮
-    输出：
-      - EE_heatmap_groups_auc_acc.png
-      - EEN_heatmap_groups_auc_acc.png
-    """
+
     import os
     from pathlib import Path
     import numpy as np
@@ -586,7 +632,7 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(csv_path)
 
-    # ---------------- 固定两组模型 & 顺序 ----------------
+
     group1_models = [
         "BertAll_Exp1_Baseline (ep10)",
         "BertAll_Exp_MLM_TLM (ep10)",
@@ -615,7 +661,7 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
     order_g1 = ["baseline MLM","MLM+TLM","MLM+Trans","MLM+TLM+Trans","MLM+TLM+Trans+POS"]
     order_g2 = ["baseline MLM","MLM Fusion Latin","MLM KL Latin","MLM Fusion IPA","MLM KL IPA"]
 
-    # ---------------- 紧凑缩写（English->E，Seen->S，Unseen->UnS） ----------------
+
     def _shorten_label(s: str) -> str:
         s = str(s)
         repl = [
@@ -636,7 +682,7 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
             s = s.replace(a, b)
         return s
 
-    # ---------------- 面板数据：行=评估项，列=模型；支持传入自定义行顺序 ----------------
+
     def _prep_panel(frame: pd.DataFrame, model_keys: list, is_ee: bool, model_order: list, row_order: list | None = None):
         f = frame[frame["model_name"].isin(model_keys)].copy()
         f["model_key"] = f["model_name"].map(lambda x: short_label.get(x, x))
@@ -651,11 +697,10 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
         piv_auc = f.pivot_table(index="row_key", columns="model_key", values="auc_roc", aggfunc="max")
         piv_acc = f.pivot_table(index="row_key", columns="model_key", values="triplet_accuracy", aggfunc="max")
 
-        # 固定列顺序
+
         piv_auc = piv_auc.reindex(columns=model_order)
         piv_acc = piv_acc.reindex(columns=model_order)
 
-        # 固定行顺序：优先使用 row_order（精确匹配），缺的自动忽略；未列出的其余行附在末尾
         if row_order is not None:
             existing = [r for r in row_order if r in piv_auc.index]
             remaining = [r for r in piv_auc.index if r not in existing]
@@ -667,7 +712,7 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
         piv_acc = piv_acc.reindex(index=final_rows)
         return piv_auc, piv_acc
 
-    # ---------------- 画并排两面板（左保留 y，右隐藏 y） ----------------
+
     def _draw_two_panels(fig_title: str,
                          left_auc: pd.DataFrame,  right_auc: pd.DataFrame,
                          left_acc: pd.DataFrame,  right_acc: pd.DataFrame,
@@ -765,7 +810,7 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
         plt.close()
         print(f"✅ Saved: {os.path.join(out_dir, outfile)}")
 
-    # ===================== E–E（带方括号的行键！）=====================
+
     df_ee = df[~df["evaluation_group"].str.contains("E2EN", na=False)].copy()
     row_order_ee = [
         "[I/Ho/D-H]", "[I/Ho/B-S]", "[I/Ht/D-H]", "[I/Ht/B-S]",
@@ -779,7 +824,7 @@ def _plot_results(csv_path: str, out_dir: str = "results"):
                      right_xlabel="",
                      outfile="EE_heatmap_groups_auc_acc.png")
 
-    # ===================== E–EN ====================
+
     df_een = df[df["evaluation_group"].str.contains("E2EN", na=False)].copy()
     row_order_een = [
         "H-E/UnS", "H-E/S",

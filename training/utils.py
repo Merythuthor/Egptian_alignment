@@ -23,10 +23,7 @@ from transformers.modeling_outputs import BaseModelOutput
 
 from datasets import Dataset, DatasetDict, concatenate_datasets
 
-from models.tiny_transformer import build_tiny_transformer
-from models.fine_tune_mbert import FineTuneMBertWrapper
-from models.ancient_bert import AncientBertWrapper
-from models.egyptian_bert import EgyptianBertWrapper
+
 from training.losses import load_loss
 from tokenizers.processors import TemplateProcessing
 
@@ -160,12 +157,12 @@ def load_model(
     lora_r: int = 8,
     checkpoint_path: str | None = None,
     temperature_strategy: str = "fixed",
+    mlm_weight: float = 0.0,
     tlm_weight: float = 0.0,
     translation_weight: float = 0.0,
     pos_weight: float = 0.0,
 
-    contrastive_weight: float = 0.0,
-    ccl_weight: float = 0.0,
+
     dropout: float = 0.1,
     attention_dropout: float = 0.1,
 ):

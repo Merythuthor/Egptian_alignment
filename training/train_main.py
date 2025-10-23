@@ -34,13 +34,9 @@ from training.normalization import normalize_text
 from training.custom_collator import CustomMultiTaskCollator
 
 from training.losses import load_loss
-from training.losses.simcse_loss import simcse_batch_golden_loss
-from models.fine_tune_mbert import FineTuneMBertWrapper
-from models.egyptian_bert import EgyptianBertWrapper
-from models.egyptian_transformer import EgyptianTransformer
+
 
 from importlib import import_module
-sl = import_module("training.losses.simcse_loss")
 
 
 
@@ -131,7 +127,7 @@ def build_collate_fn(tokenizer_dict, args, align_dict):
             "raw_text": raw_text_list,
             "offset_mapping": torch.tensor(padded_offset_mapping_list, dtype=torch.long),
             "align_pairs": torch.tensor(align_pairs) if align_pairs else None,
-            "sent_flags": torch.tensor(sent_flags) if args.use_sent_cl else None,
+
             "text_en": text_en_list,
         }
 
@@ -155,19 +151,14 @@ class CustomTrainer(Trainer):
 
         self.model_size = kwargs.pop("model_size", "tiny")
         self.tokenizer_dict = kwargs.pop("tokenizer_dict", None)
-
+        self.consistency_lambda = kwargs.pop("consistency_lambda", 0.0)
         self.loss_fn = kwargs.pop("loss_fn", None)
         self.loss_type = kwargs.pop("loss_type", "mlm")
         self.mlm_weight = kwargs.pop("mlm_weight", 0.0)
         self.tlm_weight = kwargs.pop("tlm_weight", 0.0)
         self.translation_weight = kwargs.pop("translation_weight", 0.0)
         self.pos_weight = kwargs.pop("pos_weight", 0.0)
-        self.consistency_lambda = kwargs.pop("consistency_lambda", 0.0)
 
-        self.contrastive_sampler = kwargs.pop("contrastive_sampler", None)
-        self.contrastive_weight = kwargs.pop("contrastive_weight", 0.0)
-        self.contrastive_batch_size = kwargs.pop("contrastive_batch_size", 64)
-        self.ccl_weight = kwargs.pop("ccl_weight", 0.0)
         self.fusion_mode = kwargs.pop("fusion_mode", "none")
 
         super().__init__(*args, **kwargs)
@@ -287,7 +278,10 @@ class CustomTrainer(Trainer):
 
 
         eval_ds = eval_dataset if eval_dataset is not None else self.eval_dataset
-        all_losses, mlm_losses, tlm_losses, translation_losses, pos_losses, contrastive_losses, ccl_losses, consistency_losses = [], [], [], [], [], [], [], []
+        all_losses, mlm_losses, tlm_losses, translation_losses, pos_losses= [], [], [], [], []
+
+        consistency_losses = []
+        total_losses = []
 
         eval_dataloader = self.get_eval_dataloader(eval_ds)
         self.model.eval()
@@ -583,34 +577,7 @@ class CustomTrainer(Trainer):
 
         tl = inputs.get("translation_labels", None)
 
-        if model.training and self.contrastive_sampler is not None and self.contrastive_weight > 0:
-            try:
-                indices = next(self.contrastive_sampler['dataloader_iter'])[0]
-            except StopIteration:
-                self.contrastive_sampler['dataloader_iter'] = iter(self.contrastive_sampler['dataloader'])
-                indices = next(self.contrastive_sampler['dataloader_iter'])[0]
 
-            sampled_entries = [self.contrastive_sampler['entries'][i] for i in indices]
-            src_forms = [e['form'] for e in sampled_entries]
-            tgt_forms = [random.choice(e['english']) if isinstance(e['english'], list) else e['english'] for e in
-                         sampled_entries]
-
-
-            if self.state.global_step == 0:
-                print("\n--- Contrastive Learning Sampled Batch (First Step Sample) ---")
-                for i in range(min(3, len(src_forms))):
-                    print(f"  - Pair {i + 1}: '{src_forms[i]}' <---> '{tgt_forms[i]}'")
-                print("----------------------------------------------------------------")
-
-            src_tokenized = self.tokenizer(src_forms, padding=True, truncation=True, return_tensors="pt").to(
-                self.args.device)
-            tgt_tokenized = self.tokenizer(tgt_forms, padding=True, truncation=True, return_tensors="pt").to(
-                self.args.device)
-
-            inputs['contrastive_src_input_ids'] = src_tokenized['input_ids']
-            inputs['contrastive_src_attention_mask'] = src_tokenized['attention_mask']
-            inputs['contrastive_tgt_input_ids'] = tgt_tokenized['input_ids']
-            inputs['contrastive_tgt_attention_mask'] = tgt_tokenized['attention_mask']
 
         if self.state.global_step == 0:
             print("\n=== Compute Loss Debug ===")
@@ -880,6 +847,7 @@ def parse_args():
                        choices=["token", "word"], 
                        default="token",
                        help="Masking strategy: token-level or word-level masking")
+    parser.add_argument("--training_stage", default=None)
 
     return parser.parse_args()
 
@@ -1308,11 +1276,7 @@ def main():
 
 
     align_dict = None
-    if args.use_token_align:
-        align_dict = load_align_dict_tsv(
-            project_root / "resources" / "align_dict.tsv"
-        )
-        print(f"[align] token-align dictionary loaded: {len(align_dict)} language pairs")
+
 
 
     mlm_probability = 0.25 if args.training_stage == "mlm_only" else 0.15
@@ -1354,8 +1318,8 @@ def main():
             f"{_format_lang_tag(args.lang)}_{args.model_size}_{args.loss_type}_{args.peft_method or 'full'}_"
             f"{args.tokenizer_type}"
             f"_T{int(args.with_translation)}"
-            f"_SC{int(args.use_sent_cl)}"
-            f"_TA{int(args.use_token_align)}"
+           
+             
             f"_M{int(args.multi)}"
             f"_epoch{args.epochs}_lr{args.lr:.0e}_b{args.batch_size}"
         )
@@ -1379,16 +1343,16 @@ def main():
         loss_type=args.loss_type,
         peft_method=args.peft_method,
         lora_r=args.lora_r,
-        temperature_strategy=args.temperature_strategy,
+
         mlm_weight=args.mlm_weight,
         translation_weight=args.translation_weight,
         pos_weight=args.pos_weight,
 
-        contrastive_weight=args.contrastive_weight,
-        ccl_weight=args.ccl_weight,
+
+
         dropout=args.dropout,
         attention_dropout=args.attention_dropout,
-        checkpoint_path=args.previous_stage_path
+
     ).to(device)
 
     if args.model_size == 'bert_all':
@@ -1406,7 +1370,6 @@ def main():
         model_size=args.model_size,
         pos_weight=args.pos_weight,
 
-        ccl_weight=args.ccl_weight
     )
 
 
@@ -1416,12 +1379,11 @@ def main():
     out_dir = Path(args.output_dir) / (
         f"{_format_lang_tag(args.lang)}_{args.model_size}_{args.loss_type}_{args.peft_method or 'full'}_"
         f"{args.tokenizer_type}"
-        f"_T{int(args.with_translation)}_SC{int(args.use_sent_cl)}_TA{int(args.use_token_align)}_M{int(args.multi)}"
+        
         f"_epoch{args.epochs}_lr{args.lr:.0e}_b{args.batch_size}"
     )
 
-
-
+    loss_fn = load_loss(args.loss_type)
 
     custom_trainer_args = {
         "model_size": args.model_size,
@@ -1458,7 +1420,7 @@ def main():
         metric_for_best_model=None,
         remove_unused_columns=False,
         prediction_loss_only = True,
-        dataloader_drop_last=True,
+        dataloader_drop_last=False,
         lr_scheduler_type=args.lr_scheduler_type,
         warmup_steps=args.warmup_steps,
         max_grad_norm=1,
@@ -1481,9 +1443,6 @@ def main():
     print(f"Translation Weight: {args.translation_weight}")
     print(f"POS Weight: {args.pos_weight}")
 
-    print(f"Static Contrastive Weight: {args.contrastive_weight}")
-
-    print(f"Contextual Contrastive (CCL) Weight: {args.ccl_weight}")
 
     print(f"With Translation: {args.with_translation}")
     if args.loss_type == "transformer_multitask":

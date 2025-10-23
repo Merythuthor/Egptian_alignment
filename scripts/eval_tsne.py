@@ -28,31 +28,37 @@ LANGUAGES_WITH_EN = ["hieroglyphic", "demotic", "sahidic", "bohairic", "english"
 
 FIG_A_EGYPT_ONLY = {
     "MLM baseline": {
-        "path_template": "BASE_DIR/checkpoints/bert_all_exp3_baseline_new/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
+        "path_template": str(BASE_DIR / "checkpoints" / "bert_all_exp3_baseline_new" /
+                             "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16" / "checkpoint-{}"),
         "checkpoint": 55500,
     },
     "MLM+TLM+Trans+POS": {
-        "path_template": "BASE_DIR/checkpoints/bert_all_exp2_balanced_new/multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
+        "path_template": str(BASE_DIR / "checkpoints" / "bert_all_exp2_balanced_new" /
+                             "multi_bert_all_mlm_full_shared_bpe_T1_SC0_TA0_M1_epoch10_lr5e-05_b16" / "checkpoint-{}"),
         "checkpoint": 55500,
     },
-
 }
 
 FIG_B_WITH_ENGLISH = {
     "MLM baseline": {
-        "path_template": "BASE_DIR/checkpoints/bert_all_exp3_baseline_new/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
+        "path_template": str(BASE_DIR / "checkpoints" / "bert_all_exp3_baseline_new" /
+                             "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16" / "checkpoint-{}"),
         "checkpoint": 55500,
     },
     "KL-Latin": {
-        "path_template": "BASE_DIR/checkpoints/bert_all_exp3_MLM_KL_Latin_latest/multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16/checkpoint-{}",
+        "path_template": str(BASE_DIR / "checkpoints" / "bert_all_exp3_MLM_KL_Latin_latest" /
+                             "multi_bert_all_mlm_full_shared_bpe_T0_SC0_TA0_M1_epoch10_lr5e-05_b16" / "checkpoint-{}"),
         "checkpoint": 55500,
     },
 }
 
-TOKENIZER_PATH = "BASE_DIR/project_tokenizers/bert_all/tokenizer.json"
-CORPUS_DIR = "BASE_DIR/data/processed_jsonl"
-CACHE_DIR = "BASE_DIR/evaluation_cache_bert_all"
-TSNE_OUT_DIR = Path("BASE_DIR/results/tsne"); TSNE_OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+TOKENIZER_PATH = BASE_DIR / "project_tokenizers" / "bert_all" / "tokenizer.json"
+CORPUS_DIR = BASE_DIR / "data" / "processed_jsonl"
+CACHE_DIR = BASE_DIR / "evaluation_cache_bert_all"
+TSNE_OUT_DIR = BASE_DIR / "results" / "tsne"
+TSNE_OUT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 MAX_SEQ_LEN = 768
 CACHE_BUILD_BATCH_SIZE = 32
@@ -327,7 +333,7 @@ def main():
     print(f"🖥️  Device: {device}")
 
     print(f"🔤 Loading tokenizer: {TOKENIZER_PATH}")
-    tokenizer = PreTrainedTokenizerFast(tokenizer_file=TOKENIZER_PATH)
+    tokenizer = PreTrainedTokenizerFast(tokenizer_file=str(TOKENIZER_PATH))
     tokenizer.pad_token = tokenizer.pad_token or "[PAD]"
     tokenizer.cls_token = tokenizer.cls_token or "[CLS]"
     tokenizer.sep_token = tokenizer.sep_token or "[SEP]"
