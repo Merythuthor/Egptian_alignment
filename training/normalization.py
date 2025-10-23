@@ -1,6 +1,4 @@
-
 import re
-
 
 PROTECT_RE = re.compile(r'\[[^\]]*\]|<[^>]*>')
 

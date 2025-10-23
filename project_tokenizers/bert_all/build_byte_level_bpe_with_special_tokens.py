@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 import json
 import argparse
@@ -15,21 +14,15 @@ PROJECT_ROOT = SCRIPT_DIR.parents[1]
 CORPUS_DIR = PROJECT_ROOT / "data" / "processed_jsonl"
 OUTPUT_DIR = SCRIPT_DIR
 
-
 LANGS = ["hieroglyphic", "demotic", "bohairic", "sahidic"]
-
 
 VOCAB_SIZE = 32000
 MIN_FREQ = 2
-
 
 SPECIAL_TOKENS = [
     "[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]",
     "<hiero>", "<dem>", "<boh>", "<sah>", "<eng>", "[gap]",
 ]
-
-
-
 
 def iter_corpus() -> Iterable[str]:
 
