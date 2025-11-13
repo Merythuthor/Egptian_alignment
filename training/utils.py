@@ -9,12 +9,12 @@ import os
 import random
 import re
 import torch
-import torch.nn as nn # ⭐
+import torch.nn as nn
 from tokenizers import Tokenizer
 from transformers import (
     PreTrainedTokenizerFast,
     AutoTokenizer,
-    AutoModel, # ⭐ [新增] 添加这一行来解决 NameError
+    AutoModel,
     DataCollatorForLanguageModeling,
     AutoModelForMaskedLM
 )
@@ -26,22 +26,22 @@ from datasets import Dataset, DatasetDict, concatenate_datasets
 from training.losses import load_loss
 from tokenizers.processors import TemplateProcessing
 
-from transformers import AutoModelForMaskedLM # 确保这个被导入
+from transformers import AutoModelForMaskedLM
 
 
 
 def _preprocess_egyptian_text(text: str) -> str:
 
-    text = re.sub(r"\.", "", text) # <- 不再全局删除点
-    text = text.replace(' •', '')  # 注意这里是 "空格+•"，如果也可能没有空格，可以分两步
-    text = text.replace('•', '')  # 再加一步确保所有•都被删除
+    text = re.sub(r"\.", "", text)
+    text = text.replace(' •', '')
+    text = text.replace('•', '')
     text = text.replace('[gap]', '?')
 
 
 
     return text
 
-# ---------- 语言 ↔ id 映射 ----------
+
 LANG2ID: Dict[str, int] = {
     "hieroglyphic": 0,
     "demotic":       1,

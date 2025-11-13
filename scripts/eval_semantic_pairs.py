@@ -472,7 +472,7 @@ def main():
     print(f"Loading tokenizer from: {TOKENIZER_PATH}")
     if not TOKENIZER_PATH.exists():
         raise FileNotFoundError(f"Tokenizer file not found: {TOKENIZER_PATH}")
-    tokenizer = PreTrainedTokenizerFast(tokenizer_file=as_str(TOKENIZER_PATH))  # 关键：str()
+    tokenizer = PreTrainedTokenizerFast(tokenizer_file=as_str(TOKENIZER_PATH))
     tokenizer.pad_token, tokenizer.cls_token, tokenizer.sep_token = "[PAD]", "[CLS]", "[SEP]"
     vocab_size = len(tokenizer)
 

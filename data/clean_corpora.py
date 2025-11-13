@@ -210,7 +210,7 @@ def replace_gap_dots_asterisk_unknown_words(jsonl_path):
             json.dump(item, f, ensure_ascii=False)
             f.write("\n")
 
-    print(f"✅ 处理完成，修改了 {modified_sentences} 个 JSONL 句子！")
+    print(f"✅ modifying {modified_sentences} sentences")
 
 def remove_noise_signs(input_path):
 
@@ -523,7 +523,7 @@ def search_special_chars(jsonl_path, output_path="review_examples_special.jsonl"
             if special_char_pattern.search(original_text):
                 count += 1
                 json.dump(item, out_f, ensure_ascii=False)
-                out_f.write("\n")  # 确保换行
+                out_f.write("\n")
 
     print(f"⚠️  总共发现 {count} 行包含 special_char_pattern 里的字符，并已保存至 `{output_path}`！")
 
@@ -562,9 +562,9 @@ clean_colons("manually_cleaned_cop_boh_gap_fixed.jsonl")
 
 
 non_special_char_pattern = re.compile(r"[^a-zA-ZⲀ-⳿Ϣ-ϯͰ-Ͽἀ-῝-ͯ̄ …\[\].·ϧ\‐']")
-special_char_pattern = re.compile(r"[{}]")  # 这里可以根据宝宝的需求增加更多不允许的字符
+special_char_pattern = re.compile(r"[{}]")
 
 
-# 暂时可能不需要看这部分
+
 search_non_special_chars("manually_cleaned_cop_sah_gap_fixed.jsonl")
 search_non_special_chars("manually_cleaned_cop_boh_gap_fixed.jsonl")

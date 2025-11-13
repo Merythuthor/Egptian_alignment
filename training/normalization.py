@@ -284,7 +284,7 @@ def _egyptian_insert_schwa(ipa_text: str) -> str:
 
         w_clean = w.replace('.', '')
 
-        # ★ 新：按连字符切分并保留分隔符本身
+
         parts = re.split(r'(-)', w_clean)
 
         seg_outs = []
